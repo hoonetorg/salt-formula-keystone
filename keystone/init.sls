@@ -46,23 +46,23 @@ extend:
         - service: keystone_service
   {% endif %}
 
-  #from deploy.sls
   {%- if server.get("domain", {}) %}
+  #from server.sls
   /etc/keystone/domains:
     #file.directory:
     file:
       - require:
         - pkg: keystone_packages
 
-  #from deploy.sls
   {% for domain_name, domain in server.domain.iteritems() %}
+  #from server.sls
   /etc/keystone/domains/keystone.{{ domain_name }}.conf:
     #file.managed:
     file:
       - watch_in:
         - service: keystone_service
 
-  #from deploy.sls
+  #from server.sls
   {% if domain.get('ldap', {}).get('tls', {}).get('cacert', False) %}
   keystone_domain_{{ domain_name }}_cacert:
     #file.managed:

@@ -51,6 +51,32 @@ keystone_group:
   - require:
     - pkg: keystone_packages
 
+{% if server.get("domain", {}) %}
+/etc/keystone/domains:
+  file.directory:
+    - mode: 0755
+
+{% for domain_name, domain in server.domain.iteritems() %}
+/etc/keystone/domains/keystone.{{ domain_name }}.conf:
+  file.managed:
+    - source: salt://keystone/files/keystone.domain.conf
+    - template: jinja
+    - require:
+      - file: /etc/keystone/domains
+    - defaults:
+        domain_name: {{ domain_name }}
+
+{% if domain.get('ldap', {}).get('tls', {}).get('cacert', False) %}
+keystone_domain_{{ domain_name }}_cacert:
+  file.managed:
+    - name: /etc/keystone/domains/{{ domain_name }}.pem
+    - contents_pillar: keystone:server:domain:{{ domain_name }}:ldap:tls:cacert
+    - require:
+      - file: /etc/keystone/domains
+{% endif %}
+{% endfor %}
+{% endif %}
+
 {%- if server.get('ldap', {}).get('tls', {}).get('cacert', False) %}
 
 keystone_ldap_default_cacert:

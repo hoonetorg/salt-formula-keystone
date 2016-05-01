@@ -1,54 +1,20 @@
 {%- from "keystone/map.jinja" import server with context %}
 {%- if server.enabled %}
 
-{%- if server.get("domain", {}) %}
-
-/etc/keystone/domains:
-  file.directory:
-    - mode: 0755
-
-{%- for domain_name, domain in server.domain.iteritems() %}
-
-/etc/keystone/domains/keystone.{{ domain_name }}.conf:
-  file.managed:
-    - source: salt://keystone/files/keystone.domain.conf
-    - template: jinja
-    - require:
-      - file: /etc/keystone/domains
-    - defaults:
-        domain_name: {{ domain_name }}
-    - require_in:
-      - cmd: keystone_domain_{{ domain_name }}
-
-{%- if domain.get('ldap', {}).get('tls', {}).get('cacert', False) %}
-
-keystone_domain_{{ domain_name }}_cacert:
-  file.managed:
-    - name: /etc/keystone/domains/{{ domain_name }}.pem
-    - contents_pillar: keystone:server:domain:{{ domain_name }}:ldap:tls:cacert
-    - require:
-      - file: /etc/keystone/domains
-    - require_in:
-      - cmd: keystone_domain_{{ domain_name }}
-
-{%- endif %}
-
 # FIXME
 # problem here if we have a cluster: 
-#  if /etc/domain/keystone.{{domain_name}} or 
-#  /etc/keystone/domains/{{ domain_name }}.pem is created/changes 
+#  if /etc/domain/keystone.<domain_name> or 
+#  /etc/keystone/domains/<domain_name>.pem is created/changes 
 #  and pacemaker resource keystone is already running
 #  we would need to reload/restart pacemaker keystone resource before we can continue
+{% if server.get("domain", {}) %}
+{% for domain_name, domain in server.domain.iteritems() %}
 keystone_domain_{{ domain_name }}:
   cmd.run:
     - name: source /root/keystonercv3 && openstack domain create --description "{{ domain.description }}" {{ domain_name }}
     - unless: source /root/keystonercv3 && openstack domain list | grep " {{ domain_name }}"
-    - require:
-      - file: /etc/keystone/domains
-
-{%- endfor %}
-
-{%- endif %}
+{% endfor %}
+{% endif %}
 
 keystone_syncdb:
   cmd.run:
