@@ -1,5 +1,6 @@
+{% import_yaml 'keystone/defaults_server.yaml' as server %}
 
-{% set server = salt['grains.filter_by']({
+{% set os_server = salt['grains.filter_by']({
     'Debian': {
         'pkgs': ['keystone', 'python-keystone', 'python-keystoneclient', 'python-psycopg2', 'python-mysqldb', 'mysql-client', 'python-six', 'python-memcache', 'python-openstackclient'],
         'service_name': 'keystone',
@@ -47,6 +48,8 @@
         }, 
     },
 }, merge=salt['pillar.get']('keystone:server')) %}
+
+{% do server.update(os_server) %}
 
 {% set client = salt['grains.filter_by']({
     'Debian': {

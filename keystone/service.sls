@@ -1,8 +1,9 @@
-{%- from "keystone/map.jinja" import server with context %}
-{%- if server.enabled %}
+{% from "keystone/map.jinja" import server with context %}
+{% if server.enabled %}
 keystone_service:
-  service.running:
-  - name: {{ server.service_name }}
-  - enable: True
-{%- endif %}
-
+  service.{{ server.service_state }}:
+    - name: {{ server.service_name }}
+{% if server.service_state in [ 'running', 'dead' ] %}
+    - enable: {{ server.service_enable }}
+{% endif %}
+{% endif %}

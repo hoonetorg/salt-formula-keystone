@@ -1,4 +1,5 @@
 {%- from "keystone/map.jinja" import server with context %}
+
 {%- if server.enabled %}
 
 keystone_packages:
