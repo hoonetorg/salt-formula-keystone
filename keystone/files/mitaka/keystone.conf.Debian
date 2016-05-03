@@ -1,4 +1,4 @@
-{% from "keystone/map.jinja" import server with context %}
+{%- from "keystone/map.jinja" import server with context -%}
 [DEFAULT]
 
 #
@@ -21,6 +21,7 @@ admin_token={{ server.service_token }}
 # only need to set this value if the base URL contains a path (e.g. /prefix/v3)
 # or the endpoint should be found on a different server. (string value)
 #public_endpoint = <None>
+public_endpoint = http://{{server.bind.public_address}}:{{ server.bind.public_port}}/
 
 # The base admin endpoint URL for Keystone that is advertised to clients (NOTE:
 # this does NOT affect how Keystone listens for connections). Defaults to the
@@ -29,6 +30,7 @@ admin_token={{ server.service_token }}
 # if the base URL contains a path (e.g. /prefix/v3) or the endpoint should be
 # found on a different server. (string value)
 #admin_endpoint = <None>
+private_endpoint = http://{{server.bind.private_address}}:{{ server.bind.private_port}}/
 
 # Maximum depth of the project hierarchy, excluding the project acting as a
 # domain at the top of the hierarchy. WARNING: setting it to a large value may
@@ -335,15 +337,16 @@ log_dir = /var/log/keystone
 # removed in the "O" release). (string value)
 #driver = <None>
 
-# A list of role names which are prohibited from being an implied role. (list
-# value)
-#prohibited_implied_role = admin
-
 {%- if server.get("assignment", {}).get("backend", "sql") == "ldap" %}
 driver = ldap
 {%- else %}
 driver = sql
 {%- endif %}
+
+# A list of role names which are prohibited from being an implied role. (list
+# value)
+#prohibited_implied_role = admin
+
 
 [auth]
 
@@ -373,6 +376,7 @@ driver = sql
 
 
 [cache]
+{%- if server.cache is defined %}
 
 #
 # From oslo.cache
@@ -393,7 +397,7 @@ driver = sql
 # production deployments.  Small workloads (single process) like devstack can
 # use the dogpile.cache.memory backend. (string value)
 #backend = dogpile.cache.null
-backend = oslo_cache.memcache_pool
+backend = {{server.cache.backend|default('oslo_cache.memcache_pool')}}
 
 # Arguments supplied to the backend module. Specify this option once per
 # argument to be passed to the dogpile.cache backend. Example format:
@@ -418,38 +422,40 @@ enabled = true
 # Memcache servers in the format of "host:port". (dogpile.cache.memcache and
 # oslo_cache.memcache_pool backends only). (list value)
 #memcache_servers = localhost:11211
-{%- if server.cache is defined %}
+{%- if server.cache.engine in ['memcached'] %}
 {%- if server.cache.members is defined %}
-memcache_servers = {%- for member in server.cache.members %}{{ member.host }}:{{ member.port }}{% if not loop.last %},{% endif %}{%- endfor %}
+memcache_servers = {% for member in server.cache.members %}{{ member.host }}:{{ member.port }}{% if not loop.last %},{% endif %}{%- endfor %}
 {%- else %}
 memcache_servers = ['{{ server.cache.host }}:{{ server.cache.port }}']
-{%- endif %}
 {%- endif %}
 
 # Number of seconds memcached server is considered dead before it is tried
 # again. (dogpile.cache.memcache and oslo_cache.memcache_pool backends only).
 # (integer value)
 #memcache_dead_retry = 300
-memcache_dead_retry = 300
+memcache_dead_retry = {{ server.cache.memcache_dead_retry|default('300') }}
 
 # Timeout in seconds for every call to a server. (dogpile.cache.memcache and
 # oslo_cache.memcache_pool backends only). (integer value)
 #memcache_socket_timeout = 3
-memcache_socket_timeout = 1
+memcache_socket_timeout = {{ server.cache.memcache_socket_timeout|default('1') }}
 
 # Max total number of open connections to every memcached server.
 # (oslo_cache.memcache_pool backend only). (integer value)
 #memcache_pool_maxsize = 10
-memcache_pool_maxsize = 100
+memcache_pool_maxsize = {{ server.cache.memcache_pool_maxsize|default('100') }}
 
 # Number of seconds a connection to memcached is held unused in the pool before
 # it is closed. (oslo_cache.memcache_pool backend only). (integer value)
 #memcache_pool_unused_timeout = 60
-memcache_pool_unused_timeout = 60
+memcache_pool_unused_timeout = {{ server.cache.memcache_pool_unused_timeout|default('60') }}
 
 # Number of seconds that an operation will wait to get a memcache client
 # connection. (integer value)
 #memcache_pool_connection_get_timeout = 10
+memcache_pool_connection_get_timeout = {{ server.cache.memcache_pool_connection_get_timeout|default('10') }}
+{%- endif %}
+{%- endif %}
 
 
 [catalog]
@@ -461,7 +467,6 @@ memcache_pool_unused_timeout = 60
 # Catalog template file name for use with the template catalog backend. (string
 # value)
 #template_file = default_catalog.templates
-template_file = default_catalog.templates
 
 # Entrypoint for the catalog backend driver in the keystone.catalog namespace.
 # Supplied drivers are kvs, sql, templated, and endpoint_filter.sql (string
@@ -601,14 +606,13 @@ idle_timeout = 3600
 # Deprecated group/name - [DATABASE]/sql_max_pool_size
 #max_pool_size = <None>
 max_pool_size=10
-max_overflow=30
-max_retries=-1
 
 # Maximum number of database connection retries during startup. Set to -1 to
 # specify an infinite retry count. (integer value)
 # Deprecated group/name - [DEFAULT]/sql_max_retries
 # Deprecated group/name - [DATABASE]/sql_max_retries
 #max_retries = 10
+max_retries=-1
 
 # Interval between retries of opening a SQL connection. (integer value)
 # Deprecated group/name - [DEFAULT]/sql_retry_interval
@@ -619,6 +623,7 @@ max_retries=-1
 # Deprecated group/name - [DEFAULT]/sql_max_overflow
 # Deprecated group/name - [DATABASE]/sqlalchemy_max_overflow
 #max_overflow = 50
+max_overflow=30
 
 # Verbosity of SQL debugging information: 0=None, 100=Everything. (integer
 # value)
@@ -706,7 +711,7 @@ max_retries=-1
 
 
 [eventlet_server]
-
+{%- if server.get('mode', 'wsgi') in ['eventlet'] %}
 #
 # From keystone
 #
@@ -749,7 +754,7 @@ public_bind_host={% if server.bind.address is defined %}{{ server.bind.address }
 # This option is deprecated for removal.
 # Its value may be silently ignored in the future.
 #admin_bind_host = 0.0.0.0
-admin_bind_host={% if server.bind.address is defined %}{{ server.bind.address }}{% else %}{{ server.bind.public_address }}{% endif %}
+admin_bind_host={% if server.bind.address is defined %}{{ server.bind.address }}{% else %}{{ server.bind.private_address }}{% endif %}
 
 # The port number which the admin service listens on. (port value)
 # Minimum value: 0
@@ -783,6 +788,7 @@ admin_bind_host={% if server.bind.address is defined %}{{ server.bind.address }}
 # This option is deprecated for removal.
 # Its value may be silently ignored in the future.
 #tcp_keepidle = 600
+{%- endif %}
 
 
 [eventlet_server_ssl]
@@ -869,7 +875,9 @@ admin_bind_host={% if server.bind.address is defined %}{{ server.bind.address }}
 
 # Directory containing Fernet token keys. (string value)
 #key_repository = /etc/keystone/fernet-keys/
+{%- if server.tokens.engine == 'fernet' %}
 key_repository = {{ server.tokens.location }}
+{%- endif %}
 
 # This controls how many keys are held in rotation by keystone-manage
 # fernet_rotate before they are discarded. The default value of 3 means that
@@ -1009,9 +1017,11 @@ driver = sql
 {%- if server.get("backend", "sql") == "ldap" %}
 {%- set ldap = server.ldap %}
 {% include "keystone/files/_ldap.conf" %}
-{%- endif %}
+{%- else %}
+
 
 [ldap]
+{%- endif %}
 
 #
 # From keystone
@@ -1298,7 +1308,8 @@ driver = sql
 
 
 [memcache]
-
+{#- (re)use server.cache settings here #}
+{%- if server.tokens.engine in ['memcached'] %}
 #
 # From keystone
 #
@@ -1317,26 +1328,32 @@ servers = ['{{ server.cache.host }}:{{ server.cache.port }}']
 # again. This is used by the key value store system (e.g. token pooled
 # memcached persistence backend). (integer value)
 #dead_retry = 300
+dead_retry = {{ server.cache.memcache_dead_retry|default('300') }}
 
 # Timeout in seconds for every call to a server. This is used by the key value
 # store system (e.g. token pooled memcached persistence backend). (integer
 # value)
 #socket_timeout = 3
+socket_timeout = {{ server.cache.memcache_socket_timeout|default('1') }}
 
 # Max total number of open connections to every memcached server. This is used
 # by the key value store system (e.g. token pooled memcached persistence
 # backend). (integer value)
 #pool_maxsize = 10
+pool_maxsize = {{ server.cache.memcache_pool_maxsize|default('100') }}
 
 # Number of seconds a connection to memcached is held unused in the pool before
 # it is closed. This is used by the key value store system (e.g. token pooled
 # memcached persistence backend). (integer value)
 #pool_unused_timeout = 60
+pool_unused_timeout = {{ server.cache.memcache_pool_unused_timeout|default('60') }}
 
 # Number of seconds that an operation will wait to get a memcache client
 # connection. This is used by the key value store system (e.g. token pooled
 # memcached persistence backend). (integer value)
 #pool_connection_get_timeout = 10
+pool_connection_get_timeout = {{ server.cache.memcache_pool_connection_get_timeout|default('10') }}
+{%- endif %}
 
 
 [oauth1]
@@ -1476,6 +1493,7 @@ driver=messagingv2
 # From oslo.messaging
 #
 {%- if server.notification %}
+
 # Use durable queues in AMQP. (boolean value)
 # Deprecated group/name - [DEFAULT]/amqp_durable_queues
 # Deprecated group/name - [DEFAULT]/rabbit_durable_queues
@@ -1526,18 +1544,25 @@ driver=messagingv2
 # The RabbitMQ broker address where a single node is used. (string value)
 # Deprecated group/name - [DEFAULT]/rabbit_host
 #rabbit_host = localhost
+{%- if server.get("message_queue", {}).get("host") %}
 rabbit_host = {{ server.message_queue.host }}
+{%- endif %}
 
 # The RabbitMQ broker port where a single node is used. (port value)
 # Minimum value: 0
 # Maximum value: 65535
 # Deprecated group/name - [DEFAULT]/rabbit_port
 #rabbit_port = 5672
+{%- if server.get("message_queue", {}).get("host") %}
 rabbit_port = {{ server.message_queue.port }}
+{%- endif %}
 
 # RabbitMQ HA cluster host:port pairs. (list value)
 # Deprecated group/name - [DEFAULT]/rabbit_hosts
 #rabbit_hosts = $rabbit_host:$rabbit_port
+{%- if server.get("message_queue", {}).get("members") %}
+rabbit_hosts = {% for member in server.message_queue.members %}{{ member.host }}:{{ member.port }}{% if not loop.last %},{% endif %}{%- endfor %}
+{%- endif %}
 
 # Connect over SSL for RabbitMQ. (boolean value)
 # Deprecated group/name - [DEFAULT]/rabbit_use_ssl
@@ -1587,6 +1612,9 @@ rabbit_virtual_host = {{ server.message_queue.virtual_host }}
 # HA '^(?!amq\.).*' '{"ha-mode": "all"}' " (boolean value)
 # Deprecated group/name - [DEFAULT]/rabbit_ha_queues
 #rabbit_ha_queues = false
+{%- if server.get("message_queue", {}).get("ha_queues") %}
+rabbit_ha_queues = {{ server.message_queue.ha_queues }}
+{%- endif %}
 
 # Positive integer representing duration in seconds for queue TTL (x-expires).
 # Queues which are unused for the duration of the TTL are automatically
@@ -1602,12 +1630,12 @@ rabbit_virtual_host = {{ server.message_queue.virtual_host }}
 # heartbeat's keep-alive fails (0 disable the heartbeat). EXPERIMENTAL (integer
 # value)
 #heartbeat_timeout_threshold = 60
-heartbeat_timeout_threshold = 0
+heartbeat_timeout_threshold = {{ server.message_queue.heartbeat_timeout_threshold|default('0') }}
 
 # How often times during the heartbeat_timeout_threshold we check the
 # heartbeat. (integer value)
 #heartbeat_rate = 2
-heartbeat_rate = 2
+heartbeat_rate = {{ server.message_queue.heartbeat_rate|default('2') }}
 
 # Deprecated, use rpc_backend=kombu+memory or rpc_backend=fake (boolean value)
 # Deprecated group/name - [DEFAULT]/fake_rabbit
@@ -2071,21 +2099,19 @@ heartbeat_rate = 2
 
 # Amount of time a token should remain valid (in seconds). (integer value)
 #expiration = 3600
-expiration = {{ server.tokens.expiration }}
+expiration = {{ server.tokens.expiration|default('3600') }}
 
 # Controls the token construction, validation, and revocation operations.
 # Entrypoint in the keystone.token.provider namespace. Core providers are
 # [fernet|pkiz|pki|uuid]. (string value)
 #provider = uuid
-{% if server.tokens.engine == 'fernet' %}
-provider = keystone.token.providers.fernet.Provider
-{% endif %}
+provider = {{server.tokens.engine|default('uuid')}}
 
 # Entrypoint for the token persistence backend driver in the
 # keystone.token.persistence namespace. Supplied drivers are kvs, memcache,
 # memcache_pool, and sql. (string value)
 #driver = sql
-driver = memcache_pool
+driver = {{server.tokens.driver|default('memcache_pool')}}
 
 # Toggle for token system caching. This has no effect unless global caching is
 # enabled. (boolean value)
@@ -2168,5 +2194,7 @@ driver = memcache_pool
 # (string value)
 #driver = sql
 
+{%- if  grains.os_family == 'Debian' %}
 [extra_headers]
 Distribution = Ubuntu
+{%- endif %}
