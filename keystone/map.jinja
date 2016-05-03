@@ -23,6 +23,9 @@
           'shell': '/bin/false',
           'fullname': 'OpenStack Keystone Daemons',
         }, 
+       'wsgi_conf_dir': '/etc/apache2/sites-enabled',
+       'wsgi_conf_source': 'wsgi-keystone.conf.jinja',
+       'wsgi_conf_target': '/etc/apache2/sites-enabled/wsgi-keystone.conf',
     },
     'RedHat': {
         'pkgs': ['openstack-keystone', 'openstack-utils', 'python-keystone', 'python-keystoneclient'],
@@ -46,6 +49,9 @@
           'shell': '/sbin/nologin',
           'fullname': 'OpenStack Keystone Daemons',
         }, 
+       'wsgi_conf_dir': '/etc/httpd/conf.d',
+       'wsgi_conf_source': 'wsgi-keystone.conf.jinja',
+       'wsgi_conf_target': '/etc/httpd/conf.d/wsgi-keystone.conf',
     },
 }, merge=salt['pillar.get']('keystone:server')) %}
 
