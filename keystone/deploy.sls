@@ -1,12 +1,6 @@
 {%- from "keystone/map.jinja" import server with context %}
 {%- if server.enabled %}
 
-# FIXME
-# problem here if we have a cluster: 
-#  if /etc/domain/keystone.<domain_name> or 
-#  /etc/keystone/domains/<domain_name>.pem is created/changes 
-#  and pacemaker resource keystone is already running
-#  we would need to reload/restart pacemaker keystone resource before we can continue
 {% if server.get("domain", {}) %}
 {% for domain_name, domain in server.domain.iteritems() %}
 keystone_domain_{{ domain_name }}:
@@ -14,23 +8,6 @@ keystone_domain_{{ domain_name }}:
     - name: source /root/keystonercv3 && openstack domain create --description "{{ domain.description }}" {{ domain_name }}
     - unless: source /root/keystonercv3 && openstack domain list | grep " {{ domain_name }}"
 {% endfor %}
-{% endif %}
-
-{% if server.tokens.engine == 'fernet' %}
-
-keystone_fernet_keys:
-  file.directory:
-  - name: {{ server.tokens.location }}
-  - mode: 750
-  - user: keystone
-  - group: keystone
-
-keystone_fernet_setup:
-  cmd.run:
-  - name: keystone-manage fernet_setup --keystone-user keystone --keystone-group keystone
-  - require:
-    - file: keystone_fernet_keys
-
 {% endif %}
 
 keystone_service_tenant:

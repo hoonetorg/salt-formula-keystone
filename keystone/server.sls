@@ -56,6 +56,8 @@ keystone_group:
 /etc/keystone/domains:
   file.directory:
     - mode: 0755
+    - require:
+      - pkg: keystone_packages
 
 {% for domain_name, domain in server.domain.iteritems() %}
 /etc/keystone/domains/keystone.{{ domain_name }}.conf:
@@ -106,5 +108,23 @@ keystone_ldap_default_cacert:
 keystone_syncdb:
   cmd.run:
   - name: keystone-manage db_sync
+
+{% if server.tokens.engine == 'fernet' %}
+keystone_fernet_keys:
+  file.directory:
+  - name: {{ server.tokens.location }}
+  - mode: 750
+  - user: keystone
+  - group: keystone
+  - require:
+    - pkg: keystone_packages
+
+keystone_fernet_setup:
+  cmd.run:
+  - name: keystone-manage fernet_setup --keystone-user keystone --keystone-group keystone
+  - require:
+    - file: keystone_fernet_keys
+    - file: /etc/keystone/keystone.conf
+{% endif %}
 
 {%- endif %}

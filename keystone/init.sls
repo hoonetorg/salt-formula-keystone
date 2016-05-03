@@ -56,14 +56,22 @@ extend:
         - {{ service_watch_resource }}
   {% endif %}
 
-  {%- if server.get("domain", {}) %}
   #from server.sls
-  /etc/keystone/domains:
-    #file.directory:
-    file:
-      - require:
-        - pkg: keystone_packages
+  keystone_syncdb:
+    #cmd.run:
+    cmd:
+    - watch_in:
+      - {{ service_watch_resource }}
 
+  {% if server.tokens.engine == 'fernet' %}
+  keystone_fernet_setup:
+    #cmd.run
+    cmd:
+      - watch_in:
+        - {{ service_watch_resource }}
+  {% endif %}
+
+  {%- if server.get("domain", {}) %}
   {% for domain_name, domain in server.domain.iteritems() %}
   #from server.sls
   /etc/keystone/domains/keystone.{{ domain_name }}.conf:
@@ -91,27 +99,10 @@ extend:
   {% endfor %}
   {% endif %}
 
-  #from server.sls
-  keystone_syncdb:
-    #cmd.run:
-    cmd:
-    - require_in:
-      - {{ service_watch_resource }}
-
   #from deploy.sls
-  {% if server.tokens.engine == 'fernet' %}
-  keystone_fernet_keys:
-    file.directory:
-    - require:
-      - pkg: keystone_packages
-
-  keystone_fernet_setup:
-    cmd.run:
-    - require:
-      - {{ service_watch_resource }}
-
   keystone_service_tenant:
-    keystone.tenant_present:
+    #keystone.tenant_present:
+    keystone:
     - require:
       - {{ service_watch_resource }}
 
