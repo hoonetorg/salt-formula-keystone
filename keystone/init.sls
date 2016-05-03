@@ -106,7 +106,5 @@ extend:
     - require:
       - {{ service_watch_resource }}
 
-  {% endif %}
-
 {% endif %}
 {% endif %}
