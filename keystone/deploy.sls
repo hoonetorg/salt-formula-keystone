@@ -36,8 +36,6 @@ keystone_fernet_setup:
 keystone_service_tenant:
   keystone.tenant_present:
   - name: {{ server.service_tenant }}
-  - require:
-    - cmd: keystone_syncdb
 
 keystone_admin_tenant:
   keystone.tenant_present:

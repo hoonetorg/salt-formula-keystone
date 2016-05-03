@@ -109,6 +109,12 @@ extend:
     cmd.run:
     - require:
       - {{ service_watch_resource }}
+
+  keystone_service_tenant:
+    keystone.tenant_present:
+    - require:
+      - {{ service_watch_resource }}
+
   {% endif %}
 
 {% endif %}
