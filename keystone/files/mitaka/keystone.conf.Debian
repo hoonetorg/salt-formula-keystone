@@ -1309,7 +1309,7 @@ driver = sql
 
 [memcache]
 {#- (re)use server.cache settings here #}
-{%- if server.tokens.engine in ['memcached'] %}
+{%- if server.tokens.engine in ['cache'] %}
 #
 # From keystone
 #
