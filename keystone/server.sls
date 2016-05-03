@@ -103,4 +103,8 @@ keystone_ldap_default_cacert:
   - require:
     - pkg: keystone_packages
 
+keystone_syncdb:
+  cmd.run:
+  - name: keystone-manage db_sync
+
 {%- endif %}

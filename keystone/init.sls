@@ -81,11 +81,11 @@ extend:
   {% endfor %}
   {% endif %}
 
-  #from deploy.sls
+  #from server.sls
   keystone_syncdb:
     #cmd.run:
     cmd:
-    - require:
+    - require_in:
       - service: keystone_service
 
   #from deploy.sls

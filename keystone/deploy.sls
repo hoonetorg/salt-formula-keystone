@@ -16,10 +16,6 @@ keystone_domain_{{ domain_name }}:
 {% endfor %}
 {% endif %}
 
-keystone_syncdb:
-  cmd.run:
-  - name: keystone-manage db_sync
-
 {% if server.tokens.engine == 'fernet' %}
 
 keystone_fernet_keys:
