@@ -1,8 +1,18 @@
 {% from "keystone/map.jinja" import server with context %}
 
+{% if server.mode in ['wsgi'] %}
+  {% set service_watch_resource = 'module: keystone_wsgi_reload' %}
+{% else %}
+  {% set service_watch_resource = 'service: keystone_service' %}
+{% endif %}
+
+
 include:
 {% if pillar.keystone.server is defined %}
 - keystone.server
+{% if server.mode in ['wsgi'] %}
+- keystone.wsgi
+{% endif %}
 - keystone.service
 - keystone.deploy
 {% endif %}
@@ -22,20 +32,20 @@ extend:
     #file.managed:
     file:
       - watch_in:
-        - service: keystone_service
+        - {{ service_watch_resource }}
   #from server.sls
   /etc/keystone/keystone-paste.ini:
     #file.managed:
     file:
       - watch_in:
-        - service: keystone_service
+        - {{ service_watch_resource }}
 
   #from server.sls
   /etc/keystone/policy.json:
     #file.managed:
     file:
       - watch_in:
-        - service: keystone_service
+        - {{ service_watch_resource }}
 
   #from server.sls
   {% if server.get('ldap', {}).get('tls', {}).get('cacert', False) %}
@@ -43,7 +53,7 @@ extend:
     #file.managed:
     file:
       - watch_in:
-        - service: keystone_service
+        - {{ service_watch_resource }}
   {% endif %}
 
   {%- if server.get("domain", {}) %}
@@ -60,7 +70,7 @@ extend:
     #file.managed:
     file:
       - watch_in:
-        - service: keystone_service
+        - {{ service_watch_resource }}
 
   #from server.sls
   {% if domain.get('ldap', {}).get('tls', {}).get('cacert', False) %}
@@ -68,7 +78,7 @@ extend:
     #file.managed:
     file:
       - watch_in:
-        - service: keystone_service
+        - {{ service_watch_resource }}
   {% endif %}
 
   #from deploy.sls
@@ -77,7 +87,7 @@ extend:
     cmd:
       - require:
         - file: /root/keystonercv3
-        - service: keystone_service
+        - {{ service_watch_resource }}
   {% endfor %}
   {% endif %}
 
@@ -86,7 +96,7 @@ extend:
     #cmd.run:
     cmd:
     - require_in:
-      - service: keystone_service
+      - {{ service_watch_resource }}
 
   #from deploy.sls
   {% if server.tokens.engine == 'fernet' %}
@@ -98,7 +108,7 @@ extend:
   keystone_fernet_setup:
     cmd.run:
     - require:
-      - service: keystone_service
+      - {{ service_watch_resource }}
   {% endif %}
 
 {% endif %}
