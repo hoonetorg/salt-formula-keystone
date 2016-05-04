@@ -28,7 +28,7 @@
        'wsgi_conf_target': '/etc/apache2/sites-enabled/wsgi-keystone.conf',
     },
     'RedHat': {
-        'pkgs': ['openstack-keystone', 'openstack-utils', 'python-keystone', 'python-keystoneclient'],
+        'pkgs': ['openstack-keystone', 'openstack-utils', 'python-keystone', 'python-keystoneclient', 'python-openstackclient'],
         'service_name': 'openstack-keystone',
         'api_version': '2',
         'version': 'icehouse',
@@ -64,7 +64,7 @@
         'roles': ['admin', 'Member'],
     },
     'RedHat': {
-        'pkgs': ['python-keystoneclient'],
+        'pkgs': ['python-keystoneclient', 'python-openstackclient'],
         'roles': ['admin', 'Member'],
     },
 }, merge=salt['pillar.get']('keystone:client')) %}
