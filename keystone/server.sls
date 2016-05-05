@@ -36,7 +36,7 @@ keystone_group:
   - require:
     - pkg: keystone_packages
   - watch_in:
-    - module: keystone_restart
+    - cmd: keystone_syncdb
 
 /etc/keystone/keystone-paste.ini:
   file.managed:
@@ -45,13 +45,15 @@ keystone_group:
   - require:
     - pkg: keystone_packages
   - watch_in:
-    - module: keystone_restart
+    - cmd: keystone_syncdb
 
 /etc/keystone/policy.json:
   file.managed:
   - source: salt://keystone/files/{{ server.version }}/policy-v{{ server.api_version }}.json
   - require:
     - pkg: keystone_packages
+  - watch_in:
+    - cmd: keystone_syncdb
 
 {% if server.get("domain", {}) %}
 /etc/keystone/domains:
@@ -59,8 +61,6 @@ keystone_group:
     - mode: 0755
     - require:
       - pkg: keystone_packages
-    - watch_in:
-      - module: keystone_restart
 
 {% for domain_name, domain in server.domain.iteritems() %}
 /etc/keystone/domains/keystone.{{ domain_name }}.conf:
@@ -70,7 +70,7 @@ keystone_group:
     - require:
       - file: /etc/keystone/domains
     - watch_in:
-      - module: keystone_restart
+      - cmd: keystone_syncdb
     - defaults:
         domain_name: {{ domain_name }}
 
@@ -82,7 +82,7 @@ keystone_domain_{{ domain_name }}_cacert:
     - require:
       - file: /etc/keystone/domains
     - watch_in:
-      - module: keystone_restart
+      - cmd: keystone_syncdb
 {% endif %}
 {% endfor %}
 {% endif %}
@@ -95,7 +95,7 @@ keystone_ldap_default_cacert:
     - require:
       - pkg: keystone_packages
     - watch_in:
-      - module: keystone_restart
+      - cmd: keystone_syncdb
 {%- endif %}
 
 /root/keystonerc:
@@ -113,7 +113,7 @@ keystone_ldap_default_cacert:
     - pkg: keystone_packages
 
 keystone_syncdb:
-  cmd.run:
+  cmd.wait:
   - name: keystone-manage db_sync
   - watch_in:
     - module: keystone_restart
@@ -128,6 +128,7 @@ keystone_fernet_keys:
   - require:
     - pkg: keystone_packages
 
+#FIXME: this will run on every salt run, this is too much -> needs a sane unless or onlyif
 keystone_fernet_setup:
   cmd.run:
   - name: keystone-manage fernet_setup --keystone-user keystone --keystone-group keystone
