@@ -7,7 +7,6 @@ keystone_packages:
   - names: {{ server.pkgs }}
 
 {%- if not salt['user.info'](server.user.name) %}
-
 keystone_user:
   user.present:
     - name: {{server.user.name}}
@@ -28,7 +27,6 @@ keystone_group:
     - require_in:
       - pkg: keystone_packages
       - user: keystone_user
-
 {%- endif %}
 
 /etc/keystone/keystone.conf:
@@ -37,7 +35,8 @@ keystone_group:
   - template: jinja
   - require:
     - pkg: keystone_packages
-
+  - watch_in:
+    - module: keystone_restart
 
 /etc/keystone/keystone-paste.ini:
   file.managed:
@@ -45,6 +44,8 @@ keystone_group:
   - template: jinja
   - require:
     - pkg: keystone_packages
+  - watch_in:
+    - module: keystone_restart
 
 /etc/keystone/policy.json:
   file.managed:
@@ -58,6 +59,8 @@ keystone_group:
     - mode: 0755
     - require:
       - pkg: keystone_packages
+    - watch_in:
+      - module: keystone_restart
 
 {% for domain_name, domain in server.domain.iteritems() %}
 /etc/keystone/domains/keystone.{{ domain_name }}.conf:
@@ -66,6 +69,8 @@ keystone_group:
     - template: jinja
     - require:
       - file: /etc/keystone/domains
+    - watch_in:
+      - module: keystone_restart
     - defaults:
         domain_name: {{ domain_name }}
 
@@ -76,19 +81,21 @@ keystone_domain_{{ domain_name }}_cacert:
     - contents_pillar: keystone:server:domain:{{ domain_name }}:ldap:tls:cacert
     - require:
       - file: /etc/keystone/domains
+    - watch_in:
+      - module: keystone_restart
 {% endif %}
 {% endfor %}
 {% endif %}
 
 {%- if server.get('ldap', {}).get('tls', {}).get('cacert', False) %}
-
 keystone_ldap_default_cacert:
   file.managed:
     - name: {{ server.ldap.tls.cacertfile }}
     - contents_pillar: keystone:server:ldap:tls:cacert
     - require:
       - pkg: keystone_packages
-
+    - watch_in:
+      - module: keystone_restart
 {%- endif %}
 
 /root/keystonerc:
@@ -108,6 +115,8 @@ keystone_ldap_default_cacert:
 keystone_syncdb:
   cmd.run:
   - name: keystone-manage db_sync
+  - watch_in:
+    - module: keystone_restart
 
 {% if server.tokens.engine == 'fernet' %}
 keystone_fernet_keys:
@@ -125,6 +134,42 @@ keystone_fernet_setup:
   - require:
     - file: keystone_fernet_keys
     - file: /etc/keystone/keystone.conf
+  - watch_in:
+    - module: keystone_restart
+{% endif %}
+
+{% if server.get('mode') in ['wsgi'] %}
+keystone_wsgi__conffile::
+  file.managed:
+    - name: {{ server.wsgi_conf_target }}
+    - source: salt://keystone/files/{{ server.version }}/{{server.wsgi_conf_source }}
+    - template: jinja
+    - user: root
+    - group: root
+    - mode: 0644
+keystone_service:
+  service.dead:
+    - name: {{ server.service_name }}
+    - enable: false
+{% else %}
+keystone_service:
+  service.{{ server.service_state }}:
+    - name: {{ server.service_name }}
+    {% if server.service_state in [ 'running', 'dead' ] %}
+    - enable: {{ server.service_enable }}
+    {% endif %}
+{% endif %}
+
+keystone_restart:
+{% if server.service_state in ['running'] %}
+  module.wait:
+    - name: service.restart
+    - m_name: {{ server.service_name }}
+{% else %}
+  module.wait:
+    - name: cmd.run
+    - cmd: {{server.custom_reload_command|default('apachectl graceful')}}
+    - python_shell: True
 {% endif %}
 
 {%- endif %}

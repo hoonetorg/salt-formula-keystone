@@ -1,15 +1,6 @@
 {%- from "keystone/map.jinja" import server with context %}
 {%- if server.enabled %}
 
-{% if server.get("domain", {}) %}
-{% for domain_name, domain in server.domain.iteritems() %}
-keystone_domain_{{ domain_name }}:
-  cmd.run:
-    - name: source /root/keystonercv3 && openstack domain create --description "{{ domain.description }}" {{ domain_name }}
-    - unless: source /root/keystonercv3 && openstack domain list | grep " {{ domain_name }}"
-{% endfor %}
-{% endif %}
-
 keystone_service_tenant:
   keystone.tenant_present:
   - name: {{ server.service_tenant }}
@@ -38,6 +29,17 @@ keystone_admin_user:
   - require:
     - keystone: keystone_admin_tenant
     - keystone: keystone_roles
+
+{% if server.get("domain", {}) %}
+{% for domain_name, domain in server.domain.iteritems() %}
+keystone_domain_{{ domain_name }}:
+  cmd.run:
+    - name: source /root/keystonercv3 && openstack domain create --description "{{ domain.description }}" {{ domain_name }}
+    - unless: source /root/keystonercv3 && openstack domain list | grep " {{ domain_name }}"
+  - require:
+    - keystone: keystone_admin_user
+{% endfor %}
+{% endif %}
 
 {% for service_name, service in server.get('service', {}).iteritems() %}
 
