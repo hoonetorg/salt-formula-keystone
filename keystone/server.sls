@@ -112,9 +112,28 @@ keystone_ldap_default_cacert:
   - require:
     - pkg: keystone_packages
 
+# running "keystone-manage db_sync" as root 
+# would create /var/log/keystone/keystone.log as root:root
+# this lets *wsgi* implementation fail, because it runs as keystone
 keystone_syncdb:
   cmd.wait:
   - name: keystone-manage db_sync
+  - user: keystone
+  - group: keystone
+  - watch_in:
+    - module: keystone_restart
+
+# see comment at keystone_syncdb: 
+# (just to ensure the logfile has the correct user/group)
+/var/log/keystone:
+  file.directory:
+  - user: keystone
+  - group: keystone
+  - recurse:
+    - user
+    - group
+  - require:
+    - cmd: keystone_syncdb
   - watch_in:
     - module: keystone_restart
 
@@ -148,6 +167,8 @@ keystone_wsgi__conffile::
     - user: root
     - group: root
     - mode: 0644
+    - watch_in:
+      - module: keystone_restart
 keystone_service:
   service.dead:
     - name: {{ server.service_name }}
