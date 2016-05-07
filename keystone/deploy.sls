@@ -36,8 +36,8 @@ keystone_domain_{{ domain_name }}:
   cmd.run:
     - name: source /root/keystonercv3 && openstack domain create --description "{{ domain.description }}" {{ domain_name }}
     - unless: source /root/keystonercv3 && openstack domain list | grep " {{ domain_name }}"
-  - require:
-    - keystone: keystone_admin_user
+    - require:
+      - keystone: keystone_admin_user
 {% endfor %}
 {% endif %}
 
@@ -98,9 +98,9 @@ keystone_user_{{ user_name }}:
   - roles:
       {{ tenant_name }}:
       {%- if user.get('roles', False) %}
-      {{ user.roles }}
+        {{ user.roles|json }}
       {%- else %}
-      - Member
+        - Member
       {%- endif %}
   - require:
     - keystone: keystone_tenant_{{ tenant_name }}
