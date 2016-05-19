@@ -1,14 +1,31 @@
 {%- set cluster = pillar.keystone.cluster %}
 {%- set provider = salt['pillar.get']('keystone:control:provider:'+provider_name) %}
+{%- if provider.get('version') in [ 'v3' ] -%}
+export OS_IDENTITY_API_VERSION=3
+{%- else %}
+export OS_AUTH_STRATEGY=keystone
+{%- endif %}
+{%- if provider.get('image_api_version') in [ 'v2' ] %}
+export OS_IMAGE_API_VERSION=2
+{%- endif %}
 {%- if provider.user is defined %}
+{%- if provider.get('version') in [ 'v3' ] %}
+export OS_PROJECT_DOMAIN_NAME={{ provider.project_domain_name|default('default') }}
+export OS_USER_DOMAIN_NAME={{ provider.user_domain_name|default('default') }}
+export OS_PROJECT_NAME={{ provider.tenant }}
+{%- else %}
+export OS_TENANT_NAME={{ provider.tenant }}
+{%- endif %}
 export OS_USERNAME={{ provider.user }}
 export OS_PASSWORD={{ provider.password }}
-export OS_TENANT_NAME={{ provider.tenant }}
 export OS_AUTH_URL=http://{{ provider.host }}:{{ provider.port }}/{{ provider.get('version', 'v2.0') }}
 {%- endif %}
 {%- if provider.token is defined %}
+{%- if provider.get('version') in [ 'v3' ] %}
+export OS_TOKEN={{ provider.token }}
+export OS_URL="http://{{ provider.host }}:{{ provider.port }}/{{ provider.get('version', 'v2.0') }}/"
+{%- else %}
 export OS_SERVICE_TOKEN={{ provider.token }}
 export OS_SERVICE_ENDPOINT="http://{{ provider.host }}:{{ provider.port }}/{{ provider.get('version', 'v2.0') }}/"
 {%- endif %}
-export OS_AUTH_STRATEGY=keystone
-	
+{%- endif %}
