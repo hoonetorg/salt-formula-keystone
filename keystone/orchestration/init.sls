@@ -28,3 +28,12 @@ keystone_orchestration__deploy:
     - sls: keystone.deploy
     - require:
       - salt: keystone_orchestration__pcs
+
+keystone_orchestration__control:
+  salt.state:
+    - tgt: {{node_ids}}
+    - tgt_type: list
+    - expect_minions: True
+    - sls: keystone.control
+    - require:
+      - salt: keystone_orchestration__pcs
