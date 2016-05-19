@@ -50,6 +50,7 @@ keystone_group:
 /etc/keystone/policy.json:
   file.managed:
   - source: salt://keystone/files/{{ server.version }}/policy-v{{ server.api_version }}.json
+  - template: jinja
   - require:
     - pkg: keystone_packages
   - watch_in:
