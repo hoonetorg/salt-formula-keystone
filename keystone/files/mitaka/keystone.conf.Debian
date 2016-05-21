@@ -125,7 +125,7 @@ secure_proxy_ssl_header = "HTTP_X_FORWARDED_PROTO"
 # If set to true, the logging level will be set to DEBUG instead of the default
 # INFO level. (boolean value)
 #debug = false
-debug = false
+debug = {{server.debug|default('false')}}
 
 # If set to false, the logging level will be set to WARNING instead of the
 # default INFO level. (boolean value)
@@ -1633,7 +1633,7 @@ rabbit_ha_queues = {{ server.message_queue.ha_queues }}
 # heartbeat's keep-alive fails (0 disable the heartbeat). EXPERIMENTAL (integer
 # value)
 #heartbeat_timeout_threshold = 60
-heartbeat_timeout_threshold = {{ server.message_queue.heartbeat_timeout_threshold|default('0') }}
+heartbeat_timeout_threshold = {{ server.message_queue.heartbeat_timeout_threshold|default('60') }}
 
 # How often times during the heartbeat_timeout_threshold we check the
 # heartbeat. (integer value)
