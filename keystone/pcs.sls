@@ -52,7 +52,7 @@ keystone_pcs__cib_pushed_{{pcs.keystone_cib}}:
     - cibname: {{pcs.keystone_cib}}
 {% endif %}
 
-keytone_pcs__empty_sls_prevent_error:
+keystone_pcs__empty_sls_prevent_error:
   cmd.run:
     - name: true
     - unless: true
